@@ -1,6 +1,17 @@
-pwd ls
+pwd 
 ls -l
-echo "Fantasou na to tupwsei "
+pwd ; pwd ; pwd
 pw
+pwd ; ls && ps -a
+pw && ls
+ls -la && ps -a ; pwd
+echo "Fantasou na to tupwsei "
 
+echo "Hello World" > newfile.txt
 quit
+
+echo "Hello World" > newfile.txt
+ls
+cat newfile.txt
+rm -f newfile.txt
+ls

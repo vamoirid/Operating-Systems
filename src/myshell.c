@@ -8,13 +8,15 @@
  *                             Date: 08 Jan 2020                               *
  *******************************************************************************
  */
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>			/* strlen(), strtok()  */
-#include <sys/types.h>		/* fork(),getpid() system calls */
-#include <sys/wait.h>       /* wait() system calls */
-#include <unistd.h>			/* fork(),getpid() system calls */  
-#include <errno.h>
+#include <stdio.h>          /* Standard Library                           */
+#include <stdlib.h>         /* Standard Library                           */
+#include <string.h>			/* strlen(), strtok()                         */
+#include <sys/types.h>		/* fork(),getpid() system calls               */
+#include <sys/stat.h>       /* contains info about open(), creat()        */
+#include <sys/wait.h>       /* wait() system calls                        */
+#include <unistd.h>			/* fork(),getpid() system calls               */  
+#include <errno.h>          /* contains the errors' descriptions          */
+#include <fcntl.h>          /* contains information about file descriptor */
 
 /*
  *******************************************************************************
@@ -24,6 +26,7 @@
 #define BUFFER_SIZE 1024
 #define MAX_LINE_SIZE 512
 #define SPACE_DELIM " \t\r\n\a"
+#define MAX_CMD_NUM 256
 #define GREEN "\033[0;32m"
 #define GREEN_BOLD "\033[1;32m"
 #define RED "\033[0;31m"
@@ -35,19 +38,19 @@
  * Functions' definitions
  *******************************************************************************
  */
-void   mainLoop        (int argc, const char *argv[]);
-void   printPromptName (void);
-void   quitShell       (void);
-FILE*  chooseInput     (int argc, const char *argv[]);
-char*  readLine        (FILE* input);
-char** parseLine       (char *line);
-int    checkArgs       (char **args);
-int    parseArgs       (char **args, char **cmd_args);
-int    executeCmd      (char **args);
-void   executeAll      (char **args);
-void executeRecursively(char **args, char **cmd_args);
-
- int printed = 1;
+void   mainLoop         (int argc, const char *argv[]);
+void   printPromptName  (void);
+void   quitShell        (void);
+FILE*  chooseInput      (int argc, const char *argv[]);
+char*  readLine         (FILE* input);
+char** parseLine        (char *line);
+int    checkArgs        (char **args);
+int    parseArgs        (char **args, char **cmd_args);
+int    executeCmd       (char **args);
+void   executeAll       (char **args);
+void   executeRecursive (char **args, char **cmd_args);
+int    executeRedirect  (char **args, char **cmd_args, int redirect_mode);
+void shiftLeftArgs(char **args);
 
 /*
  *******************************************************************************
@@ -74,7 +77,7 @@ void mainLoop(int argc, const char *argv[])
 	char* line = NULL;
 	char** args = NULL;
 	int exit_status = 0, check_status = 0;
-	int i = 0;
+	int i = 1;
 
 	do
 	{
@@ -94,6 +97,11 @@ void mainLoop(int argc, const char *argv[])
 		executeAll(args);
 
 		free(line);
+		while(args[i] != NULL)
+		{
+			free(args[i]);
+			i++;
+		}
 		free(args);
 	} while(1);
 	
@@ -279,18 +287,21 @@ int checkArgs(char **args)
 
 /*
  *******************************************************************************
- * parseArgs()
+ * parseArgs() is a function which has as input the arguments that were in the 
+ * line and outputs an integer with the execute status of the commands 
+ * regarding the special characters that were found in them and also the 
+ * commands to be executed in the next command.
  *******************************************************************************
  */
 int parseArgs(char **args, char **cmd_args)
 {
-	char **temp = (char**)malloc(BUFFER_SIZE * sizeof(char*));
-	int i = 0, j = 0, k = 0, m = 0, cnt = 0, execute_status = 0;
+	char **temp = (char**)malloc(MAX_CMD_NUM * sizeof(char*));
+	int i = 0, cnt1 = 0, cnt2 = 0, cnt3 = 0, cnt4 = 0, cnt5 = 0, execute_status = 0;
 
-	while(cmd_args[cnt] != NULL)
+	while(cmd_args[cnt1] != NULL)
 	{
-		cmd_args[cnt] = NULL;
-		cnt++;
+		cmd_args[cnt1] = NULL;
+		cnt1++;
 	}
 
 	while(args[i] != NULL)
@@ -336,33 +347,67 @@ int parseArgs(char **args, char **cmd_args)
 	//args[i] = "ls". We store the remainder of the line without the first
 	//command which is in **cmd_args.
 	{
-		temp[j] = args[i];
+		temp[cnt2] = args[i];
 		i++;	
-		j++;
+		cnt2++;
 	}
-	while(temp[j] != NULL) //Deleting remainder values of **temp from previous
-	//function executions
-	{	
-		temp[j] = NULL;
-		j++;
-	}
-	while(temp[k] != NULL) //Now we load the cleansed **temp values in the
-	//**args variable once again.
-	{
-		args[k] = temp[k];
-		k++;
-	}
-	while(args[k] != NULL) //the remainder values of args[k] from previous
+	while(args[cnt3] != NULL) //the remainder values of args[k] from previous
 	//function execution are being cleansed.
 	{	
-		args[k] = NULL;
-		k++;
+		args[cnt3] = NULL;
+		cnt3++;
+	}
+	while(temp[cnt4] != NULL) //Now we load the cleansed **temp values in the
+	//**args variable once again.
+	{
+		args[cnt4] = temp[cnt4];
+		cnt4++;
+	}
+	while(temp[cnt5] != NULL) //Now we clean all the remaining values of temp
+	//in order to free the memory.
+	{
+		temp[cnt5] = NULL;
+		cnt5++;
 	}
 
 	free(temp);
+
 	return execute_status;
 }
 
+void shiftLeftArgs(char **args)
+{
+	char **temp = (char**)malloc(MAX_CMD_NUM * sizeof(char*));
+	int i = 0, cnt1 = 0, cnt2 = 0, cnt3 = 0, cnt4 = 0, cnt5 = 0, execute_status = 0;
+
+	while(temp[i] != NULL)
+	{
+		temp[i] = NULL;
+		i++;
+	}
+	i = 0;
+
+	while(args[i+1] != NULL)
+	{
+		temp[i] = args[i+1];
+		i++;
+	}
+	i = 0;
+
+	while(args[i] != NULL)
+	{
+		args[i] = NULL;
+		i++;
+	}
+	i = 0;
+
+	while(temp[i] != NULL)
+	{
+		args[i] = temp[i];
+		i++;
+	}
+	i = 0;
+}
 
 /*
  *******************************************************************************
@@ -375,7 +420,7 @@ int parseArgs(char **args, char **cmd_args)
 int executeCmd(char **args)
 {
 	pid_t pid, wait_pid;
-	int status;
+	int status,i=0;
 
 	if(!strcmp(*args, "quit"))
 	{
@@ -383,11 +428,14 @@ int executeCmd(char **args)
 	}
 
 	pid = fork();
-	if(pid == 0)
+	if(pid == 0) //Child
 	{
+		//fprintf(stdout, "executeCmd Command %s: %s\n", args[0], strerror(errno));
 		if(execvp(args[0], args) == -1)
 		{
-			perror("Command"); //fprintf(stderr, "%s\n", stderror(errno));
+			//fprintf(stdout, "executeCmd Command %s: %s\n", args[0], strerror(errno));
+			perror("CommandCmd"); 
+			//fprintf(stderr, "%s\n", stderror(errno));
 			//errno is the number of error occured and it is taken from the
 			//library errno.h .If we combine this number with stderror(errno)
 			//then the output is the string which describes this errror. Then
@@ -400,7 +448,7 @@ int executeCmd(char **args)
 	{
 		fprintf(stderr,"ERROR: fork() failure."); //perror("fork")
 	}
-	else
+	else //Parent
 	{
 		do
 		{
@@ -434,45 +482,93 @@ void executeAll(char **args)
 		exit(EXIT_FAILURE);
 	}
 
-	executeRecursively(args,cmd_args);
+	executeRecursive(args,cmd_args);
 
 	//exit_status = executeCmd(cmd_args);
 	//printf("The exit status is: %d\n",exit_status);
 }
 
-void executeRecursively(char **args, char **cmd_args)
+void executeRecursive(char **args, char **cmd_args)
 {
-	int execute_status = 0, exit_status = 0, i = 0, j = 0;
+	int execute_status = 0, exit_status = 0, new_exit_status = 0, i = 0, j = 0;
 
 	execute_status = parseArgs(args, cmd_args);
 
-	printed++;
 	switch (execute_status)
 	{
-		case 0:              /* Inline command */
+		case 0:              /* Inline command     */
 			exit_status = executeCmd(cmd_args);
-			printf("The exit status is: %d\n",exit_status);
 			break;
-		case 1:              /* Commands with ';' */
+		case 1:              /* Commands with ';'  */
 			exit_status = executeCmd(cmd_args);
-			executeRecursively(args, cmd_args);
+			executeRecursive(args,cmd_args);
 			break;
-		case 2:
+		case 2:				 /* Commands with '&&' */
 			exit_status = executeCmd(cmd_args);
 			if(exit_status == 0)
 			{
-				executeRecursively(args, cmd_args);
-			}
-			else
-			{
-				exit(EXIT_FAILURE);
+				executeRecursive(args,cmd_args);
 			}
 			break;
 		case 3:
-			printf("Not yet supported. Ciao...\n");
+			exit_status = executeRedirect(args,cmd_args,execute_status);
+			/*i = 0;
+			while(args[i] != NULL)
+			{
+				printf("args[%d] = %s\n", i,args[i]);
+				i++;
+			}*/
+			if(!strcmp(args[1],";"))
+			{
+				shiftLeftArgs(args);
+				shiftLeftArgs(args);
+				executeRecursive(args,cmd_args);
+			}
+			else if(!strcmp(args[1],"&&"))
+			{
+				if(exit_status == 0)
+				{
+					shiftLeftArgs(args);
+					shiftLeftArgs(args);
+					executeRecursive(args,cmd_args);					
+				}
+			}
+			/*i = 0;
+			while(args[i] != NULL)
+			{
+				printf("args[%d] = %s\n", i,args[i]);
+				i++;
+			}*/
 			break;
 		case 4:
-			printf("Not yet supported. Ciao...\n");
+			exit_status = executeRedirect(args,cmd_args,execute_status);
+			/*i = 0;
+			while(args[i] != NULL)
+			{
+				printf("args[%d] = %s\n", i,args[i]);
+				i++;
+			}*/
+			if(!strcmp(args[1],";"))
+			{
+				shiftLeftArgs(args);
+				shiftLeftArgs(args);
+				executeRecursive(args,cmd_args);
+			}
+			else if(!strcmp(args[1],"&&"))
+			{
+				if(exit_status == 0)
+				{
+					shiftLeftArgs(args);
+					shiftLeftArgs(args);
+					executeRecursive(args,cmd_args);					
+				}
+			}
+			/*i = 0;
+			while(args[i] != NULL)
+			{
+				printf("args[%d] = %s\n", i,args[i]);
+				i++;
+			}*/
 			break;
 		case 5:
 			printf("Not yet supported. Ciao...\n");
@@ -481,4 +577,61 @@ void executeRecursively(char **args, char **cmd_args)
 			printf("ERROR: Unexpected execute status.\n");
 			exit(EXIT_FAILURE);
 	}
+}
+
+int executeRedirect(char **args, char **cmd_args, int redirect_mode)
+{
+	//if redirect_mode == 3 then <
+	//if redirect_mode == 4 then >
+	pid_t pid, wait_pid;
+	int status, fd[2], i = 0;
+
+	pid = fork();
+
+	if(pid < 0) //Error
+	{
+		perror("fork");
+		printf("Failed to make child.\n");
+	}
+	else if(pid == 0) //Child
+	{
+		if(redirect_mode == 3) // < redirection
+		{	
+			fd[0] = open(args[0],O_RDONLY);
+			dup2(fd[0],STDIN_FILENO);
+			close(fd[0]);
+		}
+		else if(redirect_mode == 4) // > redirection
+		{
+			fd[1] = creat(args[0],0644);
+			dup2(fd[1],STDOUT_FILENO);
+			close(fd[1]);
+		}
+		else 
+		{
+			printf("Not supported redirect mode.\n");
+			exit(EXIT_FAILURE);
+		}
+		//fprintf(stdout, "executeRec Command %s: %s\n", cmd_args[0], strerror(errno));
+		if(execvp(cmd_args[0], cmd_args) == -1)
+		{
+			//fprintf(stdout, "executeRec Command %s: %s\n", cmd_args[0], strerror(errno));
+			perror("CommandRec");
+		}
+		exit(EXIT_FAILURE);
+	}
+	else //Parent
+	{
+		do
+		{
+			wait_pid = wait(&status); //on success returns
+			//the pid of the child process which terminated. On failure it 
+			//returns -1.
+		} while(!WIFEXITED(status)); //When the macro
+		//WIFEXITED(status) returns TRUE it means that the child terminated
+		//normally. When the macro WIFSIGNALED(status) returns TRUE it means 
+		//that the child process was terminated by a signal.
+	}
+
+	return WEXITSTATUS(status);
 }
