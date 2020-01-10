@@ -1,6 +1,6 @@
-pwd
+pwd ls
 ls -l
-echo "Fantasou na to tupwsei"
+echo "Fantasou na to tupwsei "
 pw
 
 quit
