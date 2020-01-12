@@ -1,17 +1,21 @@
 pwd 
-ls -l
-pwd ; pwd ; pwd
+ls 
+pwd ; pwd ; pwd 
 pw
-pwd ; ls && ps -a
+pwd ; ls -l && ps -a
 pw && ls
-ls -la && ps -a ; pwd
-echo "Fantasou na to tupwsei "
+ls && ; pwd
+pwd ; && pwd
+echo "Hello!" > file.txt
+cat file.txt
 
-echo "Hello World" > newfile.txt
+pwd
+echo "Hello World" > file1.txt
+cat < file1.txt > file2.txt && cat file2.txt 
+ls 
+
+rm -f file.txt file1.txt file2.txt
+ls
+
 quit
 
-echo "Hello World" > newfile.txt
-ls
-cat newfile.txt
-rm -f newfile.txt
-ls

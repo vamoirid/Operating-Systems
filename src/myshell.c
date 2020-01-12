@@ -96,13 +96,6 @@ void mainLoop(int argc, const char *argv[])
 
 		executeAll(args);
 
-		free(line);
-		while(args[i] != NULL)
-		{
-			free(args[i]);
-			i++;
-		}
-		free(args);
 	} while(1);
 	
 }
@@ -247,6 +240,7 @@ int checkArgs(char **args)
 	{
 		printf("ERROR: Bad syntax. Unexpected first character.\n");
 		check_status = 1;
+		return check_status;
 	}
 	while(args[i] != NULL)
 	{	
@@ -254,13 +248,13 @@ int checkArgs(char **args)
 		{	
 			printf("ERROR: Bad syntax. Two or more ';' found sequentially\n");
 			check_status = 1;
-			break;
+			return check_status;
 		}
 		else if(strstr(args[i], "&&&") != NULL)
 		{
 			printf("ERROR: Bad syntax. Three or more '&' found sequentially\n");
 			check_status = 1;
-			break;
+			return check_status;
 		}
 		else if (i > 0)
 		{
@@ -269,7 +263,14 @@ int checkArgs(char **args)
 			{
 				printf("ERROR: Bad syntax. Unexpected token after ; or &&.\n");
 				check_status = 1;
-				break;				
+				return check_status;			
+			}
+			else if(!strcmp(args[i],"&&") && !strcmp(args[i-1],";") ||
+				    !strcmp(args[i],";") && !strcmp(args[i-1],"&&"))
+			{
+				printf("ERROR: Bad syntax. Unexpected token after ; or &&.\n");
+				check_status = 1;
+				return check_status;	
 			}
 		}
 		i++;
@@ -280,6 +281,7 @@ int checkArgs(char **args)
 	{
 		printf("ERROR: Bad syntax. Unexpected last token.\n");
 		check_status = 1;
+		return check_status;
 	}
 
 	return check_status;
@@ -318,6 +320,14 @@ int parseArgs(char **args, char **cmd_args)
 		}
 		else if(!(strcmp(args[i], "<")))
 		{
+			if(args[i+2] != NULL)
+			{
+				if(!strcmp(args[i+2],">"))
+				{
+					execute_status = 6;
+					break;
+				}
+			}
 			execute_status = 3;
 			break;
 		}
@@ -434,7 +444,7 @@ int executeCmd(char **args)
 		if(execvp(args[0], args) == -1)
 		{
 			//fprintf(stdout, "executeCmd Command %s: %s\n", args[0], strerror(errno));
-			perror("CommandCmd"); 
+			perror("Command"); 
 			//fprintf(stderr, "%s\n", stderror(errno));
 			//errno is the number of error occured and it is taken from the
 			//library errno.h .If we combine this number with stderror(errno)
@@ -510,45 +520,41 @@ void executeRecursive(char **args, char **cmd_args)
 				executeRecursive(args,cmd_args);
 			}
 			break;
-		case 3:
-			exit_status = executeRedirect(args,cmd_args,execute_status);
-			/*i = 0;
-			while(args[i] != NULL)
+		case 3:              /* Redirect from < */
+			if(args[1] != NULL) // 'command' < file.txt
 			{
-				printf("args[%d] = %s\n", i,args[i]);
-				i++;
-			}*/
-			if(!strcmp(args[1],";"))
-			{
-				shiftLeftArgs(args);
-				shiftLeftArgs(args);
-				executeRecursive(args,cmd_args);
-			}
-			else if(!strcmp(args[1],"&&"))
-			{
-				if(exit_status == 0)
+				if(!strcmp(args[1],";"))
+			    {
+					exit_status = executeRedirect(args,cmd_args,execute_status);
+					shiftLeftArgs(args);
+					shiftLeftArgs(args);
+					executeRecursive(args,cmd_args);
+				}
+				else if(!strcmp(args[1],"&&"))
 				{
-					shiftLeftArgs(args);
-					shiftLeftArgs(args);
-					executeRecursive(args,cmd_args);					
+					exit_status = executeRedirect(args,cmd_args,execute_status);
+					if(exit_status == 0)
+					{
+						shiftLeftArgs(args);
+						shiftLeftArgs(args);
+						executeRecursive(args,cmd_args);					
+					}
 				}
 			}
-			/*i = 0;
-			while(args[i] != NULL)
+			else
 			{
-				printf("args[%d] = %s\n", i,args[i]);
-				i++;
-			}*/
+				exit_status = executeRedirect(args,cmd_args,execute_status);
+				break;
+			}
 			break;
-		case 4:
+		case 4:             /* Redirect to > */
 			exit_status = executeRedirect(args,cmd_args,execute_status);
-			/*i = 0;
-			while(args[i] != NULL)
+
+			if(args[1] == NULL) // 'command' > file.txt
 			{
-				printf("args[%d] = %s\n", i,args[i]);
-				i++;
-			}*/
-			if(!strcmp(args[1],";"))
+				break;
+			}
+			else if(!strcmp(args[1],";"))
 			{
 				shiftLeftArgs(args);
 				shiftLeftArgs(args);
@@ -563,18 +569,33 @@ void executeRecursive(char **args, char **cmd_args)
 					executeRecursive(args,cmd_args);					
 				}
 			}
-			/*i = 0;
-			while(args[i] != NULL)
-			{
-				printf("args[%d] = %s\n", i,args[i]);
-				i++;
-			}*/
 			break;
 		case 5:
 			printf("Not yet supported. Ciao...\n");
 			break;
+		case 6: /* Redirect with < and then with > */
+			exit_status = executeRedirect(args,cmd_args,execute_status);
+			if(args[3] == NULL)
+			{
+				i = 0; while(args[i] != NULL) shiftLeftArgs(args); //adeiase olh th grammi kai pame sthn epomenh.
+				break;
+			}
+			else if(!strcmp(args[3],";"))
+			{
+				for(int i = 0; i < 4; i++) shiftLeftArgs(args);
+		    	executeRecursive(args,cmd_args);
+			}
+			else if(!strcmp(args[3],"&&"))
+			{
+				if(exit_status == 0)
+				{
+					for(int i = 0; i < 4; i++) shiftLeftArgs(args);
+					executeRecursive(args,cmd_args);					
+				}
+			}
+			break;			
 		default:
-			printf("ERROR: Unexpected execute status.\n");
+			printf("ERROR: Unexpected execute status %d.\n",execute_status);
 			exit(EXIT_FAILURE);
 	}
 }
@@ -607,6 +628,15 @@ int executeRedirect(char **args, char **cmd_args, int redirect_mode)
 			dup2(fd[1],STDOUT_FILENO);
 			close(fd[1]);
 		}
+		else if(redirect_mode == 6) // <> redirection
+		{
+			fd[0] = open(args[0],O_RDONLY);
+			dup2(fd[0],STDIN_FILENO);
+			close(fd[0]);
+			fd[1] = creat(args[2],0644);
+			dup2(fd[1],STDOUT_FILENO);
+			close(fd[1]);
+		}
 		else 
 		{
 			printf("Not supported redirect mode.\n");
@@ -616,7 +646,7 @@ int executeRedirect(char **args, char **cmd_args, int redirect_mode)
 		if(execvp(cmd_args[0], cmd_args) == -1)
 		{
 			//fprintf(stdout, "executeRec Command %s: %s\n", cmd_args[0], strerror(errno));
-			perror("CommandRec");
+			perror("Command");
 		}
 		exit(EXIT_FAILURE);
 	}
