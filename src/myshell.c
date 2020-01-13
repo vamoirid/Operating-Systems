@@ -50,7 +50,7 @@ int    executeCmd       (char **args);
 void   executeAll       (char **args);
 void   executeRecursive (char **args, char **cmd_args);
 int    executeRedirect  (char **args, char **cmd_args, int redirect_mode);
-void shiftLeftArgs(char **args);
+void   shiftLeftArgs    (char **args);
 
 /*
  *******************************************************************************
