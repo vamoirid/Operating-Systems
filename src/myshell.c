@@ -1,11 +1,11 @@
 /*
  *******************************************************************************
- *																			   *
- *						     Filename: myshell.c                               *
  *                                                                             *
- *						Author: Amoiridis Vasileios 8772                       *  
+ *                           Filename: myshell.c                               *
  *                                                                             *
- *                             Date: 08 Jan 2020                               *
+ *                      Author: Amoiridis Vasileios 8772                       *
+ *                                                                             *
+ *                             Date: 12 Jan 2020                               *
  *******************************************************************************
  */
 #include <stdio.h>          /* Standard Library                           */
@@ -51,6 +51,7 @@ void   executeAll       (char **args);
 void   executeRecursive (char **args, char **cmd_args);
 int    executeRedirect  (char **args, char **cmd_args, int redirect_mode);
 void   shiftLeftArgs    (char **args);
+int    executePipe      (char **args, char **cmd_args);
 
 /*
  *******************************************************************************
@@ -483,19 +484,14 @@ void executeAll(char **args)
 {	
 	int execute_status = 0, exit_status = 0;
 	char **cmd_args = (char**)malloc(BUFFER_SIZE * sizeof(char*));
-	char **rest_args = (char**)malloc(BUFFER_SIZE * sizeof(char*));
-	int i=0,j=0,k=0;
 
-	if(cmd_args == NULL || rest_args == NULL)
+	if(cmd_args == NULL)
 	{
 		fprintf(stderr,"ERROR: malloc() failure.\n");
 		exit(EXIT_FAILURE);
 	}
 
 	executeRecursive(args,cmd_args);
-
-	//exit_status = executeCmd(cmd_args);
-	//printf("The exit status is: %d\n",exit_status);
 }
 
 void executeRecursive(char **args, char **cmd_args)
@@ -571,7 +567,7 @@ void executeRecursive(char **args, char **cmd_args)
 			}
 			break;
 		case 5:
-			printf("Not yet supported. Ciao...\n");
+			exit_status = executePipe(args,cmd_args);
 			break;
 		case 6: /* Redirect with < and then with > */
 			exit_status = executeRedirect(args,cmd_args,execute_status);
@@ -602,8 +598,6 @@ void executeRecursive(char **args, char **cmd_args)
 
 int executeRedirect(char **args, char **cmd_args, int redirect_mode)
 {
-	//if redirect_mode == 3 then <
-	//if redirect_mode == 4 then >
 	pid_t pid, wait_pid;
 	int status, fd[2], i = 0;
 
@@ -664,4 +658,72 @@ int executeRedirect(char **args, char **cmd_args, int redirect_mode)
 	}
 
 	return WEXITSTATUS(status);
+}
+
+int executePipe(char **args, char **cmd_args)
+{
+	pid_t pid1, pid2, wait_pid;
+	int status, fd[2], i =0;
+
+	if(pipe(fd) < 0) /* fd[0]: reading end, fd[1]: writing end */
+	{
+		perror("pipe");
+		printf("Pipe failed to create.\n");
+		return EXIT_FAILURE;
+	}
+
+	pid1 = fork();
+
+	if(pid1 < 0) //Error
+	{
+		perror("fork");
+		printf("Failed to make child.\n");		
+	}
+	else if(pid1 == 0) //Child
+	{
+		close(fd[0]); //close reading end.
+		dup2(fd[1],STDOUT_FILENO);
+
+		if(execvp(cmd_args[0], cmd_args) == -1)
+		{
+			//fprintf(stdout, "executeRec Command %s: %s\n", cmd_args[0], strerror(errno));
+			perror("CommandPipe");
+		}
+		exit(EXIT_FAILURE);
+	}
+	else //Parent
+	{
+		close(fd[1]); //close writing end
+		do
+		{
+			wait_pid = wait(&status);
+		} while(!WIFEXITED(status)); 
+
+		pid2 = fork();
+
+		if(pid2 < 0) //Error
+		{
+			perror("fork");
+			printf("Failed to make child.\n");			
+		}
+		else if(pid2 == 0) //Child
+		{
+			close(fd[1]); //close writing end.
+			dup2(fd[0],STDIN_FILENO);
+
+			executeRecursive(args,cmd_args);
+			exit(EXIT_SUCCESS);
+			printf("Edw erxomai?\n");
+		}
+		else
+		{
+			close(fd[0]); //close reading end.
+			do
+			{
+				wait_pid = wait(&status);
+			} while(!WIFEXITED(status)); 
+
+			return WEXITSTATUS(status);
+		}
+	}
 }
