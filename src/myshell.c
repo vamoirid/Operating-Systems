@@ -8,15 +8,15 @@
  *                             Date: 12 Jan 2020                               *
  *******************************************************************************
  */
-#include <stdio.h>          /* Standard Library                           */
-#include <stdlib.h>         /* Standard Library                           */
-#include <string.h>			/* strlen(), strtok()                         */
-#include <sys/types.h>		/* fork(),getpid() system calls               */
-#include <sys/stat.h>       /* contains info about open(), creat()        */
-#include <sys/wait.h>       /* wait() system calls                        */
-#include <unistd.h>			/* fork(),getpid() system calls               */  
-#include <errno.h>          /* contains the errors' descriptions          */
-#include <fcntl.h>          /* contains information about file descriptor */
+#include <stdio.h>          /* Standard Library                               */
+#include <stdlib.h>         /* Standard Library                               */
+#include <string.h>			/* strlen(), strtok()                             */
+#include <sys/types.h>		/* fork(),getpid() system calls                   */
+#include <sys/stat.h>       /* contains info about open(), creat()            */
+#include <sys/wait.h>       /* wait() system calls                            */
+#include <unistd.h>			/* fork(),getpid() system calls                   */  
+#include <errno.h>          /* contains the errors' descriptions              */
+#include <fcntl.h>          /* contains information about file descriptor     */
 
 /*
  *******************************************************************************
@@ -290,10 +290,17 @@ int checkArgs(char **args)
 
 /*
  *******************************************************************************
- * parseArgs() is a function which has as input the arguments that were in the 
- * line and outputs an integer with the execute status of the commands 
- * regarding the special characters that were found in them and also the 
- * commands to be executed in the next command.
+ * parseArgs() is a function which has as input the arguments that were in the * 
+ * line and outputs an integer with the execute status of the commands         *
+ * regarding the special characters that were found in them. Moreover is a     *
+ * function which takes as an input the cmd_args and the args. Both of the are *
+ * arrays of strings which are about to be executed. The variable cmd_args     *
+ * contains the command that is to be executed, and the variale args contaings *
+ * the arguments after the special character. For example in a situation that  *
+ * we have ``` echo hello && ls -l ; pwd ``` then                              *
+ * cmd_args = echo hello                                                       *
+ * args = ls -l ; pwd                                                          *
+ * execute_status = 2
  *******************************************************************************
  */
 int parseArgs(char **args, char **cmd_args)
@@ -385,7 +392,13 @@ int parseArgs(char **args, char **cmd_args)
 
 	return execute_status;
 }
-
+/*
+ *******************************************************************************
+ * shiftLeftArgs() is a function which takes as an input an array of strings   *
+ * which in our case is the line of arguments, and what it does is that it     *
+ * shifts left so as to remove the first argument each time that it is called. *
+ *******************************************************************************
+ */
 void shiftLeftArgs(char **args)
 {
 	char **temp = (char**)malloc(MAX_CMD_NUM * sizeof(char*));
@@ -493,7 +506,15 @@ void executeAll(char **args)
 
 	executeRecursive(args,cmd_args);
 }
-
+/*
+ *******************************************************************************
+ * executeRecursive() is a function which takes as an input the cmd_args and   *
+ * the args. Both of the are arrays of strings which were executed in the      *
+ * previous execution. parseArgs() is responsible for the cmd_args, args and   *
+ * execute_status and then executeRecursive() is responsible for the cases of  *
+ * execute_status that are to be executed.                                     *
+ *******************************************************************************
+ */
 void executeRecursive(char **args, char **cmd_args)
 {
 	int execute_status = 0, exit_status = 0, new_exit_status = 0, i = 0, j = 0;
@@ -595,7 +616,14 @@ void executeRecursive(char **args, char **cmd_args)
 			exit(EXIT_FAILURE);
 	}
 }
-
+/*
+ *******************************************************************************
+ * executeRedirect() is a function which takes the cmd_args and the args and   *
+ * what it does is that it with respect to the type of redirection that was    *
+ * observed, executes the command and redirects either the input or the output *
+ * or even both to where the user commanded.                                   *
+ *******************************************************************************
+ */
 int executeRedirect(char **args, char **cmd_args, int redirect_mode)
 {
 	pid_t pid, wait_pid;
@@ -659,7 +687,13 @@ int executeRedirect(char **args, char **cmd_args, int redirect_mode)
 
 	return WEXITSTATUS(status);
 }
-
+/*
+ *******************************************************************************
+ * executePipe() is a function which is responsible for pipeline commands. As  *
+ * before, the cmd_args are the command before the pipelining that are about   *
+ * be executed and args are the rest after the pipeline character.             *
+ *******************************************************************************
+ */
 int executePipe(char **args, char **cmd_args)
 {
 	pid_t pid1, pid2, wait_pid;

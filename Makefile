@@ -28,7 +28,7 @@ myshell: myshell.o
 
 # clean temporary files
 clean:
-	$(RM) $(SRC)/*~ *.o *~
+	$(RM) *.o *~
 
 # remove executable
 purge: clean
