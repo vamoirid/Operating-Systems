@@ -10,17 +10,17 @@
  */
 #include <stdio.h>          /* Standard Library                               */
 #include <stdlib.h>         /* Standard Library                               */
-#include <string.h>			/* strlen(), strtok()                             */
-#include <sys/types.h>		/* fork(),getpid() system calls                   */
+#include <string.h>         /* strlen(), strtok()                             */
+#include <sys/types.h>      /* fork(),getpid() system calls                   */
 #include <sys/stat.h>       /* contains info about open(), creat()            */
 #include <sys/wait.h>       /* wait() system calls                            */
-#include <unistd.h>			/* fork(),getpid() system calls                   */  
+#include <unistd.h>         /* fork(),getpid() system calls                   */  
 #include <errno.h>          /* contains the errors' descriptions              */
 #include <fcntl.h>          /* contains information about file descriptor     */
 
 /*
  *******************************************************************************
- * DEFINES
+ * DEFINES                                                                     *
  *******************************************************************************
  */
 #define BUFFER_SIZE 1024
@@ -35,7 +35,7 @@
 
 /*
  *******************************************************************************
- * Functions' definitions
+ * Functions' definitions                                                      *
  *******************************************************************************
  */
 void   mainLoop         (int argc, const char *argv[]);
@@ -55,7 +55,7 @@ int    executePipe      (char **args, char **cmd_args);
 
 /*
  *******************************************************************************
- * Main Code
+ * Main Code                                                                   *
  *******************************************************************************
  */
 int main(int argc, const char *argv[])
@@ -67,8 +67,8 @@ int main(int argc, const char *argv[])
 
 /*
  *******************************************************************************
- * mainLoop() is the code that runs on every execution until a "quit" command 
- * or until an invalid argument.
+ * mainLoop() is the code that runs on every execution until a "quit" command  * 
+ * or until an invalid argument.                                               *
  *******************************************************************************
  */
 void mainLoop(int argc, const char *argv[])
@@ -103,8 +103,8 @@ void mainLoop(int argc, const char *argv[])
 
 /*
  *******************************************************************************
- * printPromptName() is a function which print the name of the prompt in the 
- * start of each line.
+ * printPromptName() is a function which print the name of the prompt in the   * 
+ * start of each line.                                                         *
  *******************************************************************************
  */
 void printPromptName()
@@ -114,7 +114,7 @@ void printPromptName()
 
 /*
  *******************************************************************************
- * quitShell() is a function which is used to terminate the shell operation.
+ * quitShell() is a function which is used to terminate the shell operation.   *
  *******************************************************************************
  */
 void quitShell()
@@ -125,22 +125,21 @@ void quitShell()
 
 /*
  *******************************************************************************
- * chooseInput() is a function which checks the number of argc variable and  
- * decides if the shell will be in interactive or batch mode. Moreover it  
- * checks for empty batch files or inappropriate number of arguments.
+ * chooseInput() is a function which checks the number of argc variable and    *
+ * decides if the shell will be in interactive or batch mode. Moreover it      *
+ * checks for empty batch files or inappropriate number of arguments.          *
  *******************************************************************************
  */
-
 FILE* chooseInput(int argc, const char* argv[])
 {	
 	FILE* input;
 
 	switch (argc)
 	{
-		case 1: 			/* User typed: ./bin/myshell */
+		case 1: /* User typed: ./bin/myshell */
 			input = stdin;
 			break;
-		case 2: 			/* User typed: ./bin/myshell "batchfile_name" */
+		case 2: /* User typed: ./bin/myshell "batchfile_name" */
 			input = fopen(argv[1], "r");
 			if(input == NULL)
 			{
@@ -157,10 +156,10 @@ FILE* chooseInput(int argc, const char* argv[])
 
 /*
  *******************************************************************************
- * readLine() function reads either 1 line from stdin or a line from a batch 
- * file and returns it. It checks for exceeding the maximum permitted line 
- * size and also if the end of file is reached. It also handles the memory
- * allocation of the line.
+ * readLine() function reads either 1 line from stdin or a line from a batch   *
+ * file and returns it. It checks for exceeding the maximum permitted line     *
+ * size and also if the end of file is reached. It also handles the memory     *
+ * allocation of the line.                                                     *
  *******************************************************************************
  */
 char* readLine(FILE* input)
@@ -197,9 +196,9 @@ char* readLine(FILE* input)
 
 /*
  *******************************************************************************
- * parseLine() function reads an input line and "cuts" it into several pieces
- * of arguments in order to save the several arguments in the commands. It 
- * returns an array of strings which contains the seperate arguments.
+ * parseLine() function reads an input line and "cuts" it into several pieces  *
+ * of arguments in order to save the several arguments in the commands. It     *
+ * returns an array of strings which contains the seperate arguments.          *
  *******************************************************************************
  */
 char** parseLine(char *line)
@@ -228,8 +227,8 @@ char** parseLine(char *line)
 
 /*
  *******************************************************************************
- * checkArgs() is a function which checks for possible syntax errors in the
- * arguments provided by the user.
+ * checkArgs() is a function which checks for possible syntax errors in the    *
+ * arguments provided by the user.                                             *
  *******************************************************************************
  */
 int checkArgs(char **args)
@@ -435,10 +434,10 @@ void shiftLeftArgs(char **args)
 
 /*
  *******************************************************************************
- * executeCmd() is a function which takes as an input the array of commands 
- * which generated from parseLine() function and executes the first command.
- * If the command was executed succesfully then the return value is 0. If 
- * the command didn't execute then the return value is 1.
+ * executeCmd() is a function which takes as an input the array of commands    *
+ * which generated from parseLine() function and executes the first command.   *
+ * If the command was executed succesfully then the return value is 0. If      *
+ * the command didn't execute then the return value is 1.                      *
  *******************************************************************************
  */
 int executeCmd(char **args)
@@ -490,7 +489,7 @@ int executeCmd(char **args)
 
 /*
  *******************************************************************************
- * executeAll() is the main execute functions. It handles all the executions
+ * executeAll() is the main execute functions. It handles all the executions   *
  *******************************************************************************
  */
 void executeAll(char **args)
@@ -594,8 +593,8 @@ void executeRecursive(char **args, char **cmd_args)
 			exit_status = executeRedirect(args,cmd_args,execute_status);
 			if(args[3] == NULL)
 			{
-				i = 0; while(args[i] != NULL) shiftLeftArgs(args); //adeiase olh th grammi kai pame sthn epomenh.
-				break;
+				i = 0; while(args[i] != NULL) shiftLeftArgs(args); 
+				break; //empty the whole line and move on to the next one
 			}
 			else if(!strcmp(args[3],";"))
 			{
